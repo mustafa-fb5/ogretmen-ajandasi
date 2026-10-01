@@ -251,12 +251,12 @@ export function TeacherDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-rose-700 flex items-center justify-center shadow-lg shadow-rose-500/30 p-[1px]">
-                <div className="w-full h-full rounded-[15px] bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-                  </svg>
-                </div>
+              <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg shadow-rose-500/25 border-2 border-rose-500/30 flex items-center justify-center bg-white shrink-0">
+                <img
+                  src="/logo.png"
+                  alt="Öğretmen Ajandası Logo"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
