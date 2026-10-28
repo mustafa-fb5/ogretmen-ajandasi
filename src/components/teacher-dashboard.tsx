@@ -19,6 +19,7 @@ import {
   saveMasterStudents,
   subscribeToMasterStudents,
 } from "@/lib/helpers";
+import { syncSingleGradeToTalebeTakip, syncAllWeekGradesToTalebeTakip } from "@/lib/talebe-sync";
 
 export function TeacherDashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -30,6 +31,8 @@ export function TeacherDashboard() {
   const [showSummary, setShowSummary] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel | "all">("all");
   const [activeSubject, setActiveSubject] = useState<SubjectId>("turkce");
+  const [isSyncingTalebe, setIsSyncingTalebe] = useState(false);
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
   const { start: weekStart, end: weekEnd } = getWeekDates(currentDate);
   const weekId = getWeekId(currentDate);
@@ -184,16 +187,24 @@ export function TeacherDashboard() {
   const handleGradeChange = useCallback(
     (studentId: string, subjectId: SubjectId, grade: number) => {
       if (!weekData) return;
+      const targetStudent = weekData.students.find((s) => s.id === studentId);
+      const newGrade = targetStudent?.grades[subjectId] === grade ? 0 : grade;
+
       const updated = {
         ...weekData,
         students: weekData.students.map((s) =>
           s.id === studentId
-            ? { ...s, grades: { ...s.grades, [subjectId]: s.grades[subjectId] === grade ? 0 : grade } }
+            ? { ...s, grades: { ...s.grades, [subjectId]: newGrade } }
             : s
         ),
       };
       setWeekData(updated);
       saveData(updated);
+
+      // Talebe Takip sistemine anlık entegrasyon
+      if (targetStudent && weekData.id) {
+        syncSingleGradeToTalebeTakip(targetStudent.name, weekData.id, subjectId, newGrade);
+      }
     },
     [weekData, saveData]
   );
@@ -219,6 +230,21 @@ export function TeacherDashboard() {
     },
     [weekData, saveData]
   );
+
+  const handleSyncAllToTalebe = async () => {
+    if (!weekData || !weekData.students || weekData.students.length === 0) return;
+    setIsSyncingTalebe(true);
+    setSyncSuccessMsg(null);
+    try {
+      await syncAllWeekGradesToTalebeTakip(weekData.students, weekData.id);
+      setSyncSuccessMsg("Talebe Takip sistemine aktarıldı ✓");
+      setTimeout(() => setSyncSuccessMsg(null), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncingTalebe(false);
+    }
+  };
 
   const navigateWeek = (direction: number) => {
     const d = new Date(currentDate);
@@ -281,6 +307,24 @@ export function TeacherDashboard() {
                   <span className="hidden sm:inline">Kaydediliyor...</span>
                 </div>
               )}
+
+              {/* Talebe Takip Sync Indicator & Button */}
+              {syncSuccessMsg && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 rounded-full font-semibold">
+                  <span>{syncSuccessMsg}</span>
+                </div>
+              )}
+              <button
+                onClick={handleSyncAllToTalebe}
+                disabled={isSyncingTalebe}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 transition-all cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
+                title="Bu haftanın notlarını Talebe Takip sistemindeki takviye puanlarına anında eşitle"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isSyncingTalebe ? "animate-spin" : ""}>
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+                <span className="hidden md:inline">{isSyncingTalebe ? "Aktarılıyor..." : "Talebe Takip'e Eşitle"}</span>
+              </button>
 
               {/* Summary toggle (mobile) */}
               <button
